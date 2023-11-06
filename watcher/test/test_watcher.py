@@ -11,28 +11,26 @@ from watcher import specs
 from watcher.specs import base
 
 
-class FakeSpec(base.Spec):
+class FakeSpec(base.TwoStateSpec):
 
     @classmethod
     def name(cls) -> str:
         return 'fake_spec'
 
-    def render_email_message(self) -> email.message.EmailMessage:
-        message = email.message.EmailMessage()
+    def render_email_message(self, message: email.message.EmailMessage):
         message['Subject'] = 'Fake subject'
         message.set_content('Fake content')
-        return message
 
 
-class ReachedStateFakeSpec(FakeSpec):
+class ActiveStateSpec(FakeSpec):
 
-    def reached_state(self) -> bool:
+    def reached_active_state(self) -> bool:
         return True
 
 
-class NotReachedStateFakeSpec(FakeSpec):
+class PassiveStateSpec(FakeSpec):
 
-    def reached_state(self) -> bool:
+    def reached_active_state(self) -> bool:
         return False
 
 
@@ -63,6 +61,7 @@ def temporary_env_var(name, value):
 @pytest.fixture
 def spec_state_file():
     with temporary_file(prefix='state_', suffix='.txt') as spec_state_file_:
+        os.remove(spec_state_file_)
         yield spec_state_file_
 
 
@@ -93,7 +92,7 @@ def test_spec_not_reached_state(smtp, spec_state_file):
             mock.patch.object(
                 specs,
                 'AVAILABLE_SPECS',
-                [NotReachedStateFakeSpec]
+                [PassiveStateSpec]
             )
         )
 
@@ -103,8 +102,8 @@ def test_spec_not_reached_state(smtp, spec_state_file):
                     os.path.basename(main.__file__),
                     '--sender', smtp,
                     '--recievers', smtp,
-                    '--spec-state-file', spec_state_file,
-                    'fake_spec'
+                    'fake_spec',
+                    '--state-file', spec_state_file,
                 ]
             )
             assert exit_code == 0
@@ -117,7 +116,7 @@ def test_spec_reached_state(smtp, spec_state_file):
             mock.patch.object(
                 specs,
                 'AVAILABLE_SPECS',
-                [ReachedStateFakeSpec]
+                [ActiveStateSpec]
             )
         )
 
@@ -127,8 +126,8 @@ def test_spec_reached_state(smtp, spec_state_file):
                     os.path.basename(main.__file__),
                     '--sender', smtp,
                     '--recievers', smtp,
-                    '--spec-state-file', spec_state_file,
-                    'fake_spec'
+                    'fake_spec',
+                    '--state-file', spec_state_file,
                 ]
             )
             assert exit_code == 0
@@ -140,8 +139,8 @@ def test_spec_reached_state(smtp, spec_state_file):
                     os.path.basename(main.__file__),
                     '--sender', smtp,
                     '--recievers', smtp,
-                    '--spec-state-file', spec_state_file,
-                    'fake_spec'
+                    'fake_spec',
+                    '--state-file', spec_state_file,
                 ]
             )
             assert exit_code == 0

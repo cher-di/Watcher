@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import contextlib
+import email.message
 import os
-import pathlib
 import re
 import smtplib
+from typing import Iterable
 
 
 def get_smtp_auth():
@@ -31,21 +32,10 @@ def get_smtp_client():
         yield client
 
 
-class SpecStateManager:
-
-    def __init__(self, path: str | pathlib.Path):
-        self._path = pathlib.Path(path)
-        if not self._path.exists():
-            self.mark_as_not_triggered()
-
-    def is_triggered(self) -> str:
-        with open(self._path) as f:
-            return f.read() == '1'
-
-    def mark_as_triggered(self):
-        with open(self._path, 'w') as f:
-            f.write('1')
-
-    def mark_as_not_triggered(self):
-        with open(self._path, 'w') as f:
-            f.write('0')
+def make_email_message(
+    sender: str, recievers: Iterable[str]
+) -> email.message.EmailMessage:
+    message = email.message.EmailMessage()
+    message['From'] = sender
+    message['To'] = ', '.join(recievers)
+    return message
